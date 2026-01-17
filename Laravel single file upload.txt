@@ -1,0 +1,24 @@
+===========================
+Laravel single file upload with creating folder
+===========================
+Start 
+===========================
+<input type="file" class="dropify" id="document" name="document" data-default-file="" data-height="100" autocomplete="off">
+===========================
+$filePath = null;
+        if ($request->hasFile('document')) {
+            $file = $request->file('document');
+            $dir  = public_path('nc_document');
+
+            if (! is_dir($dir)) {
+                mkdir($dir, 0755, true); // create folder if not exists
+            }
+
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $file->move($dir, $fileName);
+
+            $filePath = 'nc_document/' . $fileName;
+        }
+============================
+End 
+============================
