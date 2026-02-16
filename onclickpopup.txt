@@ -1,0 +1,62 @@
+
+                                 <span class="btn btn-primary btn-xs mr-2 openResubmit" data-id="{{ $item->id }}"
+                                     data-qc-id="{{ $quality_check->id }}" data-toggle="modal"
+                                     data-target="#resubmitNcModal">
+                                     Re-submit
+                                 </span>
+
+
+                                 
+             <div class="modal fade" id="resubmitNcModal" tabindex="-1">
+                 <div class="modal-dialog modal-fullscreen">
+                     <div class="modal-content">
+                         <div id="modalContent"></div>
+                     </div>
+                 </div>
+             </div>
+
+
+
+<script>
+$(document).on('click', '.openResubmit', function () {
+    var itemId = $(this).data('id');
+    var qcId = $(this).data('qc-id');
+
+    // Show modal
+    $('#resubmitNcModal').modal('show');
+
+    // Show loading message
+    $('#modalContent').html('<div class="p-5 text-center">Loading...</div>');
+
+    // Build URL manually to avoid missing parameter error
+    var url = "/account/qualitycheck/itemx/" + itemId + "/" + qcId;
+
+    // Load the Blade form via AJAX
+    $.get(url, function(data){
+        $('#modalContent').html(data);
+    }).fail(function(){
+        $('#modalContent').html('<div class="p-5 text-center text-danger">Failed to load form</div>');
+    });
+});
+</script>
+
+
+public function loadItemForm($itemId, $qcId)
+{
+ $this->nc         = DB::table('qualitycheck_nc as nc')
+            ->leftJoin('nc_severity_levels as sl', 'sl.id', '=', 'nc.severity_level_id')
+            ->leftJoin('users as u', 'u.id', '=', 'nc.nc_creator')
+            ->leftJoin('users as us', 'us.id', '=', 'nc.resposible_team')
+            ->where('nc.qc_item_id', $itemId)
+            ->where('nc.quality_check_id', $qcId)
+            ->select('nc.*', 'sl.level as severity_level_name', 'u.name as nc_creator_name', 'us.name as resposible_team_name')
+            ->orderBy('nc.id', 'desc')
+            ->first();
+    $this->data['nc'] = $this->nc;
+    return view('qualitycheck::qualityCheck.ajax.vendor_ncform', $this->data);
+}
+
+
+
+Route::get('/qualitycheck/itemx/{item}/{qc}', [QualityCheckController::class, 'loadItemForm'])->name('quality-check.nc.loadItemForm');
+
