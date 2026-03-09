@@ -5,19 +5,25 @@ Start
 ===========================
 <input type="file" class="dropify" id="document" name="document" data-default-file="" data-height="100" autocomplete="off">
 ===========================
-$filePath = null;
-        if ($request->hasFile('document')) {
-            $file = $request->file('document');
-            $dir  = public_path('nc_document');
+  $filePath = null;
 
-            if (! is_dir($dir)) {
-                mkdir($dir, 0755, true); // create folder if not exists
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
+
+            $file = $request->file('image');
+
+            $dir = public_path('reporting/main_pr_images');
+
+            // Create folder if not exists
+            if (! file_exists($dir)) {
+                mkdir($dir, 0755, true);
             }
 
-            $fileName = time() . '_' . $file->getClientOriginalName();
+            // Generate unique filename
+            $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+
             $file->move($dir, $fileName);
 
-            $filePath = 'nc_document/' . $fileName;
+            $filePath = 'reporting/main_pr_images/' . $fileName;
         }
 ============================
 End 
