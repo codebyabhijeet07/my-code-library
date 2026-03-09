@@ -1,0 +1,436 @@
+config/dompdf.php
+  'enable_php' => true,  // for page no.
+
+
+============================================================
+Controler
+============================================================
+
+use Barryvdh\DomPDF\Facade\Pdf;
+
+public function generatePdf(Request $request)
+{
+    $projectDetails = DB::table('tasks as t')
+    ->select([
+        't.*',
+        'p.project_name',
+        'p.project_short_code',
+
+        'pr.name as prepared_by',
+        'dpr.name as prepared_designation',
+
+        've.name as verified_by',
+        'dve.name as verified_designation',
+
+        'en.name as endorsed_by',
+        'den.name as endorsed_designation',
+    ])
+
+    ->join('projects as p', 't.project_id', '=', 'p.id')
+
+    ->join('users as pr', 't.pr_prepared_by', '=', 'pr.id')
+    ->leftJoin('employee_details as ed_pr', 'ed_pr.user_id', '=', 'pr.id')
+    ->leftJoin('designations as dpr', 'dpr.id', '=', 'ed_pr.designation_id')
+
+    ->join('users as ve', 't.pr_verified_by', '=', 've.id')
+    ->leftJoin('employee_details as ed_ve', 'ed_ve.user_id', '=', 've.id')
+    ->leftJoin('designations as dve', 'dve.id', '=', 'ed_ve.designation_id')
+
+    ->join('users as en', 't.pr_endorsed_by', '=', 'en.id')
+    ->leftJoin('employee_details as ed_en', 'ed_en.user_id', '=', 'en.id')
+    ->leftJoin('designations as den', 'den.id', '=', 'ed_en.designation_id')
+
+    ->where('t.id', $request->subProjectId)
+    ->first();
+
+
+    $prRecords = ReportingPr::where('project_id', $request->project_id)
+        ->where('sub_project_id', $request->subProjectId)
+        ->where('date', $request->date)
+        ->latest()
+        ->get();
+
+    $data = [
+        'prRecords' => $prRecords,
+        'projectDetails' => $projectDetails,
+    ];
+
+    $pdf = Pdf::loadView('reporting::dpr.pdf.report', $data);
+    return $pdf->stream('report.pdf');
+    //  return view('reporting::dpr.pdf.report', $data);
+}
+============================================================
+View
+==========================================================
+
+Modules/Reporting/Resources/views/dpr/pdf/report.blade.php
+
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+
+    <style>
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            font-size: 12px;
+        }
+
+        /* page margin */
+        @page {
+            margin: 30px;
+        }
+
+        .page-border {
+
+            border: 1px solid #000;
+        }
+
+        /* header */
+        .header {
+            position: fixed;
+            top: 10px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        /* footer */
+        .footer {
+            position: fixed;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 11px;
+        }
+
+        /* cover page */
+        .cover {
+            page-break-after: always;
+        }
+
+        /* title */
+        .cover_title {
+            margin-top:10px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            position: relative;
+        }
+
+        /* project details */
+        .project_table {
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .project_table td {
+            padding: 6px;
+        }
+
+        .footer {
+            margin: 10px
+        }
+
+        .footer .project_table {
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        /* .footer .project_table,
+        .footer .project_table td,
+        .footer .project_table th {
+
+            border: 1px solid #ccc;
+            border-collapse: collapse;
+        } */
+
+        .footer .project_table td,
+        .footer .project_table th {
+            font-size: 13px;
+            padding: 2px;
+            text-align: start;
+        }
+
+        /* section title */
+        .section_title {
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            background: #d9d9d9;
+            padding: 5px;
+        }
+
+        /* image */
+        .report_img {
+            height: 435px;
+            margin: 10px
+        }
+
+
+
+        .img_title {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .logo {
+            width: 50px;
+            position: absolute;
+            top: 0;
+            right: 20px;
+        }
+
+        .section-body {
+            padding: 20px
+        }
+        .cover_title::before {
+    content: "";
+    width: 285px;
+    border-bottom: 2px solid #000;
+    display: block;
+    position: absolute;
+    top: 28px;
+    left: 223px;
+}
+
+        td,
+        th {
+            font-size: 15px;
+        }
+
+        .section-body table,
+        .section-body table th,
+        .section-body table td {
+            border: 1px solid #ccc;
+            border-collapse: collapse;
+        }
+
+        p {
+            margin: 0 0 8px 0;
+            line-height: 1.4;
+        }
+
+        .pagenum:before {
+            content: counter(page);
+        }
+
+        /* .pagecount:before {
+            content: counter(pages);
+        } */
+
+        .img_box {
+            border: 1px solid #ccc;
+        }
+
+        .col-1 {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+
+        .col-11 {
+            border: 1px solid #ccc;
+        }
+
+        .col-11-img {
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+    </style>
+
+</head>
+
+<body class="page-border">
+
+    <!-- COVER PAGE -->
+    <div class="cover ">
+
+        <div class="cover_title">PHOTOGRAPHIC REPORT</div>
+
+        <table class="project_table">
+            <tr>
+                <td width="150"><b>Project Name</b></td>
+                <td><b>: {{ $projectDetails->project_name }}</b></td>
+            </tr>
+
+            <tr>
+                <td><b>Project Code</b></td>
+                <td><b>: {{ $projectDetails->project_short_code ?? 'PL00000' }}</b></td>
+            </tr>
+
+            <tr>
+                <td><b>Period From</b></td>
+                {{-- <td>: {{ $from_date }} To {{ $to_date }}</td> --}}
+                <td><b>: {{ $prRecords[0]->date ?? '' }}</b></td>
+
+            </tr>
+
+            <tr>
+                <td><b>Photographic Report No</b></td>
+                <td><b>: {{ $projectDetails->project_short_code . 'PR25' }}</b></td>
+
+            </tr>
+        </table>
+
+        <div class="section_title">
+            {{ $projectDetails->project_name }}
+        </div>
+
+        <div class="section-body">
+
+            <center>
+                @if ($projectDetails->pr_image)
+                    <img src="{{ public_path($projectDetails->pr_image ?? 'cover.jpg') }}" height="620">
+                @endif
+
+            </center>
+
+            <br>
+
+            <table width="100%" border="1" cellspacing="0" cellpadding="6">
+                <tr>
+                    <td align="center">
+                        <b>Prepared By:</b><br>
+                    </td>
+
+                    <td align="center">
+                        <b>Verified By:</b><br>
+                    </td>
+
+                    <td align="center">
+                        <b>Endorsed By:</b><br>
+                    </td>
+                </tr>
+                <tr>
+                    <td align="center">
+                        <p>{{ $projectDetails->prepared_by ?? '' }}</p>
+                        <b>{{ $projectDetails->prepared_designation }}</b>
+                    </td>
+
+                    <td align="center">
+                        <p>{{ $projectDetails->verified_by ?? '' }}</p>
+                        <b>{{ $projectDetails->verified_designation }}</b>
+
+                    </td>
+
+                    <td align="center">
+                        <p>{{ $projectDetails->endorsed_by ?? '' }}</p>
+                        <b>{{ $projectDetails->endorsed_designation }}</b>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div class="footer">
+            <table class="project_table">
+                <tr>
+                    <td width="">Doc.No:PLN-03-F04</td>
+                    <td>: {{ $projectDetails->project_name }}</td>
+                    <td rowspan="2" style="text-align: end; position:relative">
+                        Prepared By
+                        <img src="{{ public_path('user-uploads/app-logo/44ab968499f8144cc4287599d2961b84.png') }}"
+                            class="logo" alt="">
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>Title : Photographic Report</td>
+                    <td>: {{ $projectDetails->project_code ?? 'PL1306' }}</td>
+                </tr>
+            </table>
+
+        </div>
+
+    </div>
+
+
+    <!-- HEADER -->
+    {{-- <div class="header">
+        Photographic Report
+    </div> --}}
+
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <table class="project_table">
+            <tr>
+                <td width="">Doc.No:PLN-03-F04</td>
+                <td>: {{ $projectDetails->project_name }}</td>
+                <td rowspan="2" style="text-align: end; position:relative">
+                    Prepared By
+                    <img src="{{ public_path('user-uploads/app-logo/44ab968499f8144cc4287599d2961b84.png') }}"
+                        class="logo" alt="">
+                </td>
+            </tr>
+
+            <tr>
+                <td>Title : Photographic Report</td>
+                <td>: {{ $projectDetails->project_code ?? 'PL1306' }}</td>
+            </tr>
+        </table>
+
+
+    </div>
+
+    <!-- REPORT PAGES -->
+
+    <div style="margin: 0px 0 60px 0">
+        <table style="width:100%; border-collapse:collapse;">
+            @foreach ($prRecords as $key => $row)
+                <tr>
+                    <td class="col-1">
+                        <div class="sr_no">
+                          <b>  {{ $key + 1 }}</b>
+                        </div>
+                    </td>
+                    <td class="col-11">
+                        <div class="img_title">
+                           <b> {{ $row->title }}</b>
+                        </div>
+                    </td>
+
+                </tr>
+                <tr>
+                    <td class="col-1"></td>
+                    <td class="col-11-img">
+                        @if ($row->image)
+                            <center>
+                                <img src="{{ public_path($row->image) }}" class="report_img">
+                            </center>
+                        @endif
+                    </td>
+                </tr>
+            @endforeach
+        </table>
+    </div>
+
+<script type="text/php">
+    if (isset($pdf)) {
+        // This function runs on every page after the PDF is fully rendered
+        $pdf->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) {
+            $font = $fontMetrics->get_font("DejaVu Sans", "normal");
+            $size = 9;
+            $text = "Page " . $pageNumber . " of " . $pageCount;
+
+            // 1. Calculate the width of the text to center it
+            $width = $fontMetrics->get_text_width($text, $font, $size);
+
+            // 2. Set coordinates (A4 width is 595 points)
+            $x = (595 - $width) / 2;
+            $y = 820; // Increase this number to move text LOWER, decrease to move HIGHER
+
+            // 3. Draw the text
+            $canvas->text($x, $y, $text, $font, $size);
+        });
+    }
+</script>
+
+</body>
+
+</html>
