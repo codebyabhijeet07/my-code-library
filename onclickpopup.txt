@@ -18,7 +18,7 @@
 
 
 <script>
-$(document).on('click', '.openResubmit', function () {
+$(document).off('click').on('click', '.openResubmit', function () {
     var itemId = $(this).data('id');
     var qcId = $(this).data('qc-id');
 
