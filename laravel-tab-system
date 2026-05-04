@@ -1,29 +1,22 @@
- public function index()
+    public function index()
     {
+        $this->tab = request('tab', 'default'); // default tab
 
-        $tab = request('tab');
-
-        switch ($tab) {
+        switch ($this->tab) {
             case 'product_vendor_category':
-                // $this->projectCategory = ProjectCategory::all();
-                $this->view = 'product-setting.ajax.product_vendor_category';
+                $this->view = 'contractors::work_order.vendor_order.ajax.product_vendor_category';
                 break;
+
+            case 'something_else':
+                $this->view = 'contractors::work_order.vendor_order.ajax.something_else';
+                break;
+
             default:
-                // $this->projectSetting       = ProjectSetting::first();
-                // $this->projectPrefixSetting = DB::table('project_prefix_settings')->first();
-                $this->view = 'product-setting.ajax.product_category';
+                $this->view = 'contractors::work_order.vendor_order.ajax.default';
                 break;
         }
 
-        $this->activeTab = $tab ?: 'product_category';
-
-        if (request()->ajax()) {
-            $html = view($this->view, $this->data)->render();
-
-            return Reply::dataOnly(['status' => 'success', 'html' => $html, 'title' => $this->pageTitle, 'activeTab' => $this->activeTab]);
-        }
-
-        return view('product-setting.index', $this->data);
+        return view('contractors::work_order.vendor_order.index', $this->data);
     }
 
 
@@ -31,78 +24,41 @@
 
 
 index.php
-
 @extends('layouts.app')
 
 @section('content')
-<div class="w-100 d-flex">
 
-    @include('sections.setting-sidebar')
+<div class="container">
 
-    <x-setting-card>
-        <x-slot name="header">
-            <div class="s-b-n-header" id="tabs">
-                <nav class="tabs px-4 border-bottom-grey">
-                    <div class="nav" id="nav-tab" role="tablist">
-                        <a class="nav-item nav-link f-15 product_category"
-                           href="{{ route('product-setting.index') }}"
-                           role="tab">
-                           @lang($pageTitle)
-                        </a>
+    <!-- Tabs -->
+    <ul class="nav nav-tabs">
+        <li class="nav-item">
+            <a class="nav-link {{ $tab == 'default' ? 'active' : '' }}"
+               href="{{ route('cm_wo_vendor_items.index', ['tab' => 'default']) }}">
+                Default
+            </a>
+        </li>
 
-                        <a class="nav-item nav-link f-15 status"
-                           href="{{ route('product-setting.index') }}?tab=product_vendor_category"
-                           role="tab">
-                           @lang('modules.projects.projectStatusSettings')
-                        </a>
-                    </div>
-                </nav>
-            </div>
-        </x-slot>
+        <li class="nav-item">
+            <a class="nav-link {{ $tab == 'product_vendor_category' ? 'active' : '' }}"
+               href="{{ route('cm_wo_vendor_items.index', ['tab' => 'product_vendor_category']) }}">
+                Product Vendor Category
+            </a>
+        </li>
 
+        <li class="nav-item">
+            <a class="nav-link {{ $tab == 'something_else' ? 'active' : '' }}"
+               href="{{ route('cm_wo_vendor_items.index', ['tab' => 'something_else']) }}">
+                Something Else
+            </a>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="mt-3">
         @include($view)
-
-    </x-setting-card>
+    </div>
 
 </div>
+
 @endsection
-
-@push('scripts')
-<script>
-    const activeTab = "{{ $activeTab }}";
-
-    function setActiveTab(tab) {
-        $('.nav-item').removeClass('active');
-        $('.' + tab).addClass('active');
-    }
-
-    function showBtn(tab) {
-        $('.actionBtn').addClass('d-none');
-        $('.' + tab + '-btn').removeClass('d-none');
-    }
-
-    setActiveTab(activeTab);
-    showBtn(activeTab);
-
-    $("body").on("click", "#editSettings .nav a", function(e) {
-        e.preventDefault();
-
-        const requestUrl = this.href;
-        setActiveTab($(this).attr('class').split(' ')[3]);
-
-        $.easyAjax({
-            url: requestUrl,
-            blockUI: true,
-            container: "#nav-tabContent",
-            historyPush: true,
-            success: function(response) {
-                if (response.status === "success") {
-                    $('#nav-tabContent').html(response.html);
-                    showBtn(response.activeTab);
-                    init('#nav-tabContent');
-                }
-            }
-        });
-    });
-</script>
-@endpush
